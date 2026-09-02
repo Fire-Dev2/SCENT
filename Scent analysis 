@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+"""
+SCENT: nine-class chemical headspace classification from a three-channel MQ sensor array.
+
+Reproduces the classification metrics and figures reported in the manuscript:
+  - 5-fold stratified cross-validation accuracy and macro F1
+  - Per-class precision/recall table (Table 1)
+  - Pooled out-of-fold confusion matrix (Figure 2)
+  - Gini feature importance by sensor channel (Figure 3)
+  - Batch holdout check (train on 40-trial batch, test on 10-trial batch)
+
+Usage:
+    python scent_analysis.py --data-dir ../data --out-dir ../figures
+
+Expected input: 18 CSV files (two per analyte) in --data-dir, with columns
+    MQ3_V, MQ9_V, MQ135_V, TVOC_ppb, eCO2_ppm, Temp_C, Humidity_pct, Trial_ID, Label
+Only the three MQ voltage columns are used as classifier features.
+"""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (accuracy_score, classification_report,
+                             confusion_matrix, f1_score)
+from sklearn.model_selection import (StratifiedKFold, cross_val_predict,
+                                     cross_val_score)
+
+# --- Configuration ------------------------------------------------------------
+
+RANDOM_STATE = 42
+N_ESTIMATORS = 100
+N_SPLITS = 5
+
+FEATURES = ["MQ3_V", "MQ9_V", "MQ135_V"]
+
+# Each analyte was acquired in two batches: a 40-trial batch ("A") and a
+# 10-trial batch ("B"), for 50 trials per analyte and 450 trials total.
+FILES = {
+    "Acetone":           ("MQ-3_Sensor_Data_Acetone_80.csv",
+                          "MQ-3_Sensor_Data_Acetone_20.csv"),
+    "Acetic_Acid":       ("Acetic_Acid_80_Data.csv",
+                          "Acetic_Acid_20_Data.csv"),
+    "Ammonia":           ("MQ-3_Sensor_Data_Ammonia_80.csv",
+                          "MQ-3_Sensor_Data_Ammonia_20.csv"),
+    "Distilled_Water":   ("MQ-3_Sensor_Data_Distilled_Water_80.csv",
+                          "MQ-3_Sensor_Data_Distilled_Water_20.csv"),
+    "Ethanol":           ("Ethanol_80_Sensor_Data.csv",
+                          "Ethanol_20_Sensor_Data.csv"),
+    "Ethyl_Acetate":     ("Ethyl_Acetate_80_Sensor_Data.csv",
+                          "Ethyl_Acetate_20.csv"),
+    "Glycerol":          ("Glycerol_80_Data.csv",
+                          "Glycerol_20_Sensor_Data.csv"),
+    "Hydrogen_Peroxide": ("Hydrogen_Peroxide_80_Sensor_Data.csv",
+                          "Hydrogen_Peroxide_20.csv"),
+    "Propylene_Glycol":  ("Propylene_Glycol_80_Data.csv",
+                          "Propylene_Glycol_20_Sensor_Data.csv"),
+}
+
+DISPLAY_NAMES = {
+    "Acetic_Acid": "Acetic acid",
+    "Acetone": "Acetone",
+    "Ammonia": "Ammonia",
+    "Distilled_Water": "Distilled water",
+    "Ethanol": "Ethanol",
+    "Ethyl_Acetate": "Ethyl acetate",
+    "Glycerol": "Glycerol",
+    "Hydrogen_Peroxide": "Hydrogen peroxide",
+    "Propylene_Glycol": "Propylene glycol",
+}
+
+CHANNEL_LABELS = {
+    "MQ3_V": "MQ-3 (alcohol)",
+    "MQ9_V": "MQ-9 (combustible gas / CO)",
+    "MQ135_V": "MQ-135 (air quality / NH3)",
+}
+
+
+# --- Data loading -------------------------------------------------------------
+
+def load_data(data_dir: Path) -> pd.DataFrame:
+    """Load all 18 CSVs into one frame with Analyte and Batch columns."""
+    frames = []
+    missing = []
+    for analyte, (file_a, file_b) in FILES.items():
+        for fname, batch in ((file_a, "A"), (file_b, "B")):
+            path = data_dir / fname
+            if not path.exists():
+                missing.append(fname)
+                continue
+            df = pd.read_csv(path)
+            df["Analyte"] = analyte
+            df["Batch"] = batch
+            frames.append(df)
+
+    if missing:
+        sys.exit(f"Missing {len(missing)} data file(s) in {data_dir}:\n  "
+                 + "\n  ".join(missing))
+
+    data = pd.concat(frames, ignore_index=True)
+
+    for col in FEATURES:
+        if col not in data.columns:
+            sys.exit(f"Required column '{col}' not found. Columns present: "
+                     f"{list(data.columns)}")
+
+    return data
+
+
+def sanity_checks(data: pd.DataFrame) -> dict:
+    """Integrity checks that should pass before any metric is trusted."""
+    counts = data["Analyte"].value_counts()
+    n_dup = int(data.duplicated(subset=FEATURES).sum())
+
+    # Per-batch spread: a batch of independent trials should show
+    # trial-to-trial variation well above ADC quantisation.
+    spread = {}
+    for analyte in FILES:
+        sub = data[data["Analyte"] == analyte]
+        spread[analyte] = {
+            b: round(float(sub[sub["Batch"] == b]["MQ3_V"].max()
+                           - sub[sub["Batch"] == b]["MQ3_V"].min()), 5)
+            for b in ("A", "B")
+        }
+
+    print("=== Data integrity ===")
+    print(f"Total trials: {len(data)}")
+    print(f"Trials per analyte: {counts.min()}-{counts.max()}")
+    print(f"Exact duplicate feature rows: {n_dup}")
+    print("MQ3_V within-batch spread (V), per analyte:")
+    for analyte, s in spread.items():
+        flag = "  <-- CHECK: batch A spread is very low" if s["A"] < 0.005 else ""
+        print(f"  {analyte:20s} A={s['A']:.5f}  B={s['B']:.5f}{flag}")
+    print()
+
+    return {"n_total": int(len(data)),
+            "n_per_class": int(counts.min()),
+            "n_duplicate_rows": n_dup,
+            "mq3_spread_by_batch": spread}
+
+
+# --- Analysis -----------------------------------------------------------------
+
+def run_classification(data: pd.DataFrame) -> dict:
+    X = data[FEATURES].values
+    y = data["Analyte"].values
+    classes = sorted(data["Analyte"].unique())
+
+    cv = StratifiedKFold(n_splits=N_SPLITS, shuffle=True,
+                         random_state=RANDOM_STATE)
+
+    def new_clf():
+        return RandomForestClassifier(n_estimators=N_ESTIMATORS,
+                                      random_state=RANDOM_STATE)
+
+    acc = cross_val_score(new_clf(), X, y, cv=cv, scoring="accuracy")
+    f1 = cross_val_score(new_clf(), X, y, cv=cv, scoring="f1_macro")
+    y_pred = cross_val_predict(new_clf(), X, y, cv=cv)
+
+    chance = 1.0 / len(classes)
+
+    print("=== 5-fold stratified cross-validation ===")
+    print(f"Accuracy: {acc.mean():.4f} +/- {acc.std():.4f}  "
+          f"(folds: {np.round(acc, 4)})")
+    print(f"Macro F1: {f1.mean():.4f} +/- {f1.std():.4f}")
+    print(f"Chance level ({len(classes)} balanced classes): {chance:.3f}")
+    print()
+    print(classification_report(y, y_pred, digits=3))
+
+    cm = confusion_matrix(y, y_pred, labels=classes)
+    print("Confusion matrix (pooled out-of-fold):")
+    print(pd.DataFrame(cm, index=classes, columns=classes).to_string())
+    print()
+
+    # Batch holdout: train on the 40-trial batch, test on the held-out 10-trial batch
+    a = data[data["Batch"] == "A"]
+    b = data[data["Batch"] == "B"]
+    holdout = new_clf().fit(a[FEATURES], a["Analyte"])
+    holdout_acc = accuracy_score(b["Analyte"], holdout.predict(b[FEATURES]))
+    print(f"Batch holdout (train A n={len(a)} -> test B n={len(b)}): "
+          f"{holdout_acc:.4f}")
+
+    # Feature importance from a model fit on all trials
+    full = new_clf().fit(X, y)
+    importances = dict(zip(FEATURES, full.feature_importances_.tolist()))
+    print("\n=== Gini feature importance ===")
+    for k, v in importances.items():
+        print(f"  {k}: {v:.4f}")
+
+    report = classification_report(y, y_pred, output_dict=True, digits=3)
+
+    return {
+        "classes": classes,
+        "chance_level": chance,
+        "cv_accuracy_mean": float(acc.mean()),
+        "cv_accuracy_std": float(acc.std()),
+        "cv_accuracy_folds": acc.tolist(),
+        "cv_macro_f1_mean": float(f1.mean()),
+        "cv_macro_f1_std": float(f1.std()),
+        "batch_holdout_accuracy": float(holdout_acc),
+        "feature_importances": importances,
+        "per_class": {c: report[c] for c in classes},
+        "confusion_matrix": cm.tolist(),
+    }
+
+
+# --- Figures ------------------------------------------------------------------
+
+def make_figures(results: dict, out_dir: Path) -> None:
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    matplotlib.rcParams["font.family"] = "DejaVu Sans"
+    matplotlib.rcParams["font.size"] = 10
+
+    classes = results["classes"]
+    labels = [DISPLAY_NAMES[c] for c in classes]
+    cm = np.array(results["confusion_matrix"])
+    n_total = int(cm.sum())
+
+    # Figure 2: confusion matrix
+    fig, ax = plt.subplots(figsize=(6.5, 5.5))
+    im = ax.imshow(cm, cmap="Blues", vmin=0, vmax=cm.max())
+    ax.set_xticks(range(len(labels)))
+    ax.set_yticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+    ax.set_yticklabels(labels)
+    ax.set_xlabel("Predicted class")
+    ax.set_ylabel("True class")
+    ax.set_title(f"Confusion matrix (pooled 5-fold stratified CV, n = {n_total})")
+
+    thresh = cm.max() / 2
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            if cm[i, j] > 0:
+                ax.text(j, i, str(cm[i, j]), ha="center", va="center",
+                        color="white" if cm[i, j] > thresh else "black",
+                        fontsize=8)
+
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04).set_label("Trial count")
+    fig.tight_layout()
+    fig.savefig(out_dir / "Figure2_confusion_matrix.png", dpi=300)
+    fig.savefig(out_dir / "Figure2_confusion_matrix.pdf")
+    plt.close(fig)
+
+    # Figure 3: feature importance
+    imp = results["feature_importances"]
+    order = sorted(imp, key=imp.get, reverse=True)
+    vals = [imp[k] for k in order]
+
+    fig, ax = plt.subplots(figsize=(5, 3.5))
+    bars = ax.bar([CHANNEL_LABELS[k] for k in order], vals, color="#4C72B0")
+    ax.set_ylabel("Gini importance")
+    ax.set_title(f"Sensor channel importance (random forest, n = {n_total})")
+    ax.set_ylim(0, max(vals) * 1.2)
+    for bar, v in zip(bars, vals):
+        ax.text(bar.get_x() + bar.get_width() / 2, v + 0.01, f"{v:.3f}",
+                ha="center", fontsize=9)
+    plt.xticks(rotation=15, ha="right")
+    fig.tight_layout()
+    fig.savefig(out_dir / "Figure3_feature_importance.png", dpi=300)
+    fig.savefig(out_dir / "Figure3_feature_importance.pdf")
+    plt.close(fig)
+
+    print(f"\nFigures written to {out_dir}")
+
+
+def write_table1(results: dict, out_dir: Path) -> None:
+    """Per-class precision/recall table as reported in Table 1."""
+    rows = []
+    for c in results["classes"]:
+        m = results["per_class"][c]
+        rows.append({
+            "Analyte": DISPLAY_NAMES[c],
+            "Support (n)": int(m["support"]),
+            "Precision": round(m["precision"], 3),
+            "Recall": round(m["recall"], 3),
+            "F1": round(m["f1-score"], 3),
+        })
+    table = pd.DataFrame(rows)
+    table.to_csv(out_dir / "Table1_per_class_metrics.csv", index=False)
+    print(f"Table 1 written to {out_dir / 'Table1_per_class_metrics.csv'}")
+
+
+# --- Entry point --------------------------------------------------------------
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--data-dir", type=Path, default=Path("../data"),
+                    help="Directory containing the 18 trial CSV files")
+    ap.add_argument("--out-dir", type=Path, default=Path("../figures"),
+                    help="Directory for figures, table, and results JSON")
+    args = ap.parse_args()
+
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+
+    data = load_data(args.data_dir)
+    integrity = sanity_checks(data)
+    results = run_classification(data)
+    results["integrity"] = integrity
+
+    make_figures(results, args.out_dir)
+    write_table1(results, args.out_dir)
+
+    with open(args.out_dir / "results_summary.json", "w") as fh:
+        json.dump(results, fh, indent=2)
+    print(f"Results JSON written to {args.out_dir / 'results_summary.json'}")
+
+
+if __name__ == "__main__":
+    main()
