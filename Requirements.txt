@@ -1,0 +1,9 @@
+# Versions verified to reproduce the reported results
+numpy>=1.26
+pandas>=2.0
+scikit-learn==1.8.0
+matplotlib>=3.8
+
+# Note: scikit-learn is pinned because random forest internals and therefore
+# exact fold-level accuracy can shift between minor versions. Reported numbers
+# (89.8% +/- 0.8%) were produced with scikit-learn 1.8.0 on Python 3.12.3.
