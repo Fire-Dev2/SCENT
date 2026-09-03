@@ -2,21 +2,29 @@
 
 Low-cost embedded electronic nose for volatile organic compound (VOC) headspace classification.
 
-This repository contains the data, analysis code, and hardware files supporting the manuscript:
+Data, analysis code, and hardware files supporting:
 
-> Nambi, T., Bhimireddy, N. & McElroy, J. P. *A low-cost embedded electronic nose classifies nine chemical headspaces offline using an embedded random forest classifier.* (under review)
+> Nambi, T., Bhimireddy, N. & McElroy, J. P. *Resistance-ratio normalization does not resolve humidity-limited confusion in a three-sensor offline electronic nose.* (under review)
 
 ---
 
 ## What this is
 
-SCENT is an $83 open-hardware electronic nose. Three MQ-series metal oxide semiconductor (MOS) gas sensors sit in a 3D-printed PETG chamber with active purge fluidics. Acquisition, feature extraction, and classification all run on a Raspberry Pi 5 with no network dependency.
+SCENT is an $83 open-hardware electronic nose. Three MQ-series metal oxide semiconductor (MOS) gas sensors sit in a 3D-printed PETG chamber with active purge fluidics. Acquisition, feature extraction, and classification all run on a Raspberry Pi 5 with no network dependency. A BME680 and a CCS811 are logged alongside the array.
 
-Reported result: **89.8% ± 0.8%** accuracy across nine chemical headspaces (450 trials, 50 per analyte), 5-fold stratified cross-validation, against an 11.1% chance baseline.
+Three results:
+
+| | |
+|---|---|
+| Three MQ channels, nine headspaces | **89.8 ± 0.8%** accuracy (chance 11.1%) |
+| Adding Rs/R0 normalization | **80.0 ± 1.5%** — no significant change (McNemar p = 0.076) |
+| Adding BME680 relative humidity | **99.6 ± 0.5%** (McNemar p < 0.001) |
+
+The residual glycerol/water confusion under the three MQ channels is physical, not a signal-conditioning artifact: both headspaces are water-dominated at ambient temperature. Resistance-ratio referencing does not resolve it; a humidity transducer does.
 
 ---
 
-## Reproducing the reported results
+## Reproducing every reported value
 
 ```bash
 git clone https://github.com/Fire-Dev2/SCENT.git
@@ -26,26 +34,36 @@ cd code
 python scent_analysis.py --data-dir ../data --out-dir ../figures
 ```
 
-This prints the cross-validation accuracy, macro F1, per-class precision/recall, and confusion matrix, and writes to `figures/`:
+One script regenerates everything in the manuscript and the supplementary material. Runtime is a few minutes, dominated by the label-permutation test; pass `--permutations 60` to shorten it. All results are deterministic under a fixed seed (`random_state=42`).
+
+**Outputs written to `figures/`:**
 
 | Output | Corresponds to |
 |---|---|
-| `Figure2_confusion_matrix.png` / `.pdf` | Manuscript Figure 2 |
-| `Figure3_feature_importance.png` / `.pdf` | Manuscript Figure 3 |
-| `Table1_per_class_metrics.csv` | Manuscript Table 1 |
-| `results_summary.json` | All reported metrics, machine-readable |
+| `Figure2_confusion_matrix.png` / `.pdf` | Manuscript Fig. 2 |
+| `Figure3_humidity_fusion.png` / `.pdf` | Manuscript Fig. 3 |
+| `FigureS1_feature_importance.png` | Supplementary Fig. S1 |
+| `FigureS2_normalization_ablation.png` | Supplementary Fig. S2 |
+| `TableI_normalization.csv` | Manuscript Table I |
+| `TableII_per_class_primary.csv` | Manuscript Table II |
+| `TableS1_classifiers.csv` | Supplementary Table S1 |
+| `TableS2_ablation_per_class.csv` | Supplementary Table S2 |
+| `TableS3_humidity_fusion.csv` | Supplementary Table S3 |
+| `results_summary.json` | Every reported statistic, machine-readable |
 
-Runtime is a few seconds on a laptop. Results are deterministic (`random_state=42` throughout).
+The script also prints the exact binomial and permutation tests against chance, the McNemar and paired-t tests on the normalization ablation, the batch and cross-day holdouts, the seven-classifier comparison, and the per-analyte mean humidity that underpins the physical explanation.
 
-**Software versions used for the reported numbers:** Python 3.12.3, scikit-learn 1.8.0. Minor version differences in scikit-learn may shift accuracy in the third decimal place.
+**Versions used for the reported numbers:** Python 3.12.3, scikit-learn 1.8.0, statsmodels, scipy, numpy, pandas, matplotlib. Minor scikit-learn version differences may shift accuracy in the third decimal place.
 
 ---
 
 ## Data
 
-### File organisation
+Two datasets, both in `data/`.
 
-Nine analytes, two CSV files each, 18 files total in `data/`.
+### Primary dataset — 450 trials
+
+Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 trials) **on separate days**. Trial order was randomized and interleaved across analytes rather than blocked, so within-session baseline drift is distributed across classes rather than confounded with class identity.
 
 | Analyte | Batch A (40 trials) | Batch B (10 trials) |
 |---|---|---|
@@ -59,76 +77,59 @@ Nine analytes, two CSV files each, 18 files total in `data/`.
 | Hydrogen peroxide | `Hydrogen_Peroxide_80_Sensor_Data.csv` | `Hydrogen_Peroxide_20.csv` |
 | Propylene glycol | `Propylene_Glycol_80_Data.csv` | `Propylene_Glycol_20_Sensor_Data.csv` |
 
-Total: 450 trials, 50 per analyte, balanced across all nine classes.
+The `_80` / `_20` suffixes refer to the trial split, not to concentration. All analytes were used undiluted as purchased.
 
-> **TO COMPLETE:** Describe what distinguishes Batch A from Batch B — were they acquired on different days, in different sessions, after separate sensor warm-up cycles, or was a single acquisition run split? This matters: the analysis script reports a batch holdout check (train on Batch A, test on Batch B, 86.7% accuracy), and how much that check demonstrates depends entirely on what separates the two batches. If they are independent sessions it is a meaningful robustness result; if it is one session split arbitrarily it is a weak check.
+### Ablation dataset — 245 trials
 
-> **TO COMPLETE:** If the terms "Test 1 Data", "Test 2 Data", and "Test 3 Data" are used elsewhere in project records, map them onto these files here so the naming is unambiguous.
+`New_Protocol_Dataset.csv`. Same nine analytes under a modified protocol in which the **clean-air baseline resistance R₀ of each channel was recorded immediately before every exposure**, permitting resistance-ratio features to be computed per trial. Acquired over two days (`Batch_Day` column): 35 trials each for glycerol and distilled water, the pair responsible for the dominant error mode, and 25 for each of the other seven.
+
+This dataset supports the normalization ablation and the humidity-fusion result. It is a separate acquisition from the primary dataset, so the headline three-channel accuracy and the raw-versus-normalized comparison are **not matched trial-for-trial** — stated as a limitation in the manuscript.
 
 ### Column format
 
-Every trial CSV has one row per trial and the following columns:
-
 | Column | Units | Description |
 |---|---|---|
-| `MQ3_V` | V | MQ-3 sensor divider output voltage (alcohol-sensitive) |
-| `MQ9_V` | V | MQ-9 sensor divider output voltage (combustible gas / CO) |
-| `MQ135_V` | V | MQ-135 sensor divider output voltage (air quality / NH₃) |
-| `TVOC_ppb` | ppb | Total VOC, auxiliary sensor |
-| `eCO2_ppm` | ppm | Equivalent CO₂, auxiliary sensor |
-| `Temp_C` | °C | Ambient temperature at acquisition |
-| `Humidity_pct` | % RH | Ambient relative humidity at acquisition |
+| `MQ3_V` | V | MQ-3 divider output (alcohol-sensitive) |
+| `MQ9_V` | V | MQ-9 divider output (combustible aliphatics, CO) |
+| `MQ135_V` | V | MQ-135 divider output (air quality, NH₃) |
+| `MQ3_R0`, `MQ9_R0`, `MQ135_R0` | load-resistor units | Per-trial clean-air baseline resistance (ablation dataset only) |
+| `TVOC_ppb` | ppb | Total VOC, CCS811 |
+| `eCO2_ppm` | ppm | Equivalent CO₂, CCS811 |
+| `Temp_C` | °C | Ambient temperature, BME680 |
+| `Humidity_pct` | % RH | Ambient relative humidity, BME680 |
 | `Trial_ID` | — | Trial index within analyte |
+| `Batch_Day` | — | Acquisition day (ablation dataset only) |
 | `Label` | — | Analyte name |
 
-**Only `MQ3_V`, `MQ9_V`, and `MQ135_V` are used as classifier features.** The auxiliary and environmental columns are provided for transparency and reuse but are not inputs to the reported model.
+**Which columns are classifier inputs:** the three MQ voltages for the primary result; those three plus `Humidity_pct` for the fusion result; `Rs/R0` derived from the MQ voltages and the R₀ columns for the ablation. `TVOC_ppb`, `eCO2_ppm`, and `Temp_C` are logged for transparency and are not used by any reported model.
 
-### Important note on feature representation
+### Feature definitions
 
-The reported classification uses **raw divider voltage**, not resistance-ratio (Rs/R₀) normalized features. A per-trial clean-air baseline resistance was not captured alongside this analyte panel, so the standard Rs/R₀ normalization described in the manuscript Methods could not be applied to these data. This is stated explicitly in the manuscript so the accuracy is not mistaken for a normalized result.
+Raw features are the divider voltages as logged. Resistance-ratio features are computed as
+
+```
+Rs/RL = (Vc / Vout) − 1        with Vc = 5 V
+feature = (Rs/RL) / R0         per channel, per trial
+```
+
+R₀ is logged in load-resistor units, so RL cancels in the ratio.
 
 ### Data integrity
 
-`scent_analysis.py` runs automatic checks before computing any metric: total trial count, per-class balance, exact duplicate detection, and per-batch signal spread. The spread check exists because a batch of genuinely independent trials should vary well above ADC quantisation; a near-zero spread indicates replicated or derived rows rather than independent measurements. All 18 files in this repository pass.
-
-> **TO COMPLETE:** An earlier set of nine `*_80.csv` files existed with near-zero trial-to-trial variance (spread ≈ 0.001 V, versus ≈ 0.05 V here) and with glycerol and distilled water numerically identical to four decimal places. Those files were superseded by the ones in this repository and must not be deposited. If they exist anywhere in project records, delete them or label them clearly as derived/averaged so they are never mistaken for raw acquisition output.
+`scent_analysis.py` runs automatic checks before computing any metric: trial counts, class balance, exact-duplicate detection, and per-analyte signal spread. The spread check exists because a batch of genuinely independent trials varies well above ADC quantisation; a near-zero spread indicates replicated or derived rows rather than independent measurements. Both datasets pass, and the check prints a warning naming any analyte that fails.
 
 ---
 
 ## Hardware
 
-> **TO COMPLETE:** The following are referenced by the manuscript but not yet in this repository.
+> **TO COMPLETE.** Referenced by the manuscript, not yet deposited.
 
-- `hardware/chamber.stl` and `hardware/chamber.step` — sampling chamber CAD, modelled in Autodesk Fusion 360, printed in PETG
-- `hardware/photos/` — photographs of the assembled device (needed for manuscript Figure 1)
-- `hardware/wiring.md` or schematic — sensor-to-ADS1115-to-Pi wiring
-- `hardware/bill_of_materials.csv` — see template below
+- `hardware/chamber.stl`, `hardware/chamber.step` — sampling chamber CAD (Autodesk Fusion 360, printed in PETG)
+- `hardware/photos/` — photographs of the assembled device
+- `hardware/wiring.md` — sensor-to-ADS1115-to-Pi wiring
+- `hardware/bill_of_materials.csv` — template present; needs real per-item supplier and price. The manuscript claims $83 total, so the rows must sum to that figure.
 
-### Bill of materials
-
-The manuscript's headline claim is an $83 total component cost, so this table needs real per-item prices and sources.
-
-> **TO COMPLETE:** Fill in quantity, supplier, and actual price paid for each row. Costs must sum to the figure claimed in the manuscript.
-
-| Component | Qty | Supplier / part number | Unit cost | Notes |
-|---|---|---|---|---|
-| Raspberry Pi 5 | 1 | | | Compute module |
-| ADS1115 16-bit ADC | 1 | | | I²C, provides analog input |
-| MQ-3 gas sensor | 1 | | | Alcohol-sensitive |
-| MQ-9 gas sensor | 1 | | | Combustible gas / CO |
-| MQ-135 gas sensor | 1 | | | Air quality / NH₃ |
-| Exhaust fan | 1 | | | Active purge |
-| PETG filament | — | | | Chamber, per-print cost |
-| Wiring, connectors, misc | — | | | |
-| **Total** | | | **$83** | Must match manuscript |
-
----
-
-## Firmware / acquisition
-
-> **TO COMPLETE:** The acquisition code that runs on the Raspberry Pi (sensor sampling, baseline/exposure/purge phase timing, CSV logging) is not yet in this repository. Reviewers assessing reproducibility will look for it, since the trial protocol described in the manuscript Methods is implemented there.
-
-Acquisition protocol per the manuscript: 30 s baseline stabilization, 60 s exposure, 120 s active purge recovery.
+Acquisition firmware (sensor sampling, 30 s baseline / 60 s exposure / 120 s purge phase timing, CSV logging) is also not yet deposited. Reviewers assessing reproducibility will look for it.
 
 ---
 
@@ -137,13 +138,13 @@ Acquisition protocol per the manuscript: 30 s baseline stabilization, 60 s expos
 ```
 SCENT/
 ├── code/
-│   └── scent_analysis.py        # Preprocessing, RF training, 5-fold CV, figures
-├── data/                        # 18 trial CSVs (450 trials, 9 analytes)
-├── figures/                     # Generated outputs (created on first run)
-├── hardware/                    # CAD, BOM, photos  [TO COMPLETE]
+│   └── scent_analysis.py     # reproduces every reported value and figure
+├── data/                     # 18 primary CSVs + New_Protocol_Dataset.csv
+├── figures/                  # generated on first run
+├── hardware/                 # CAD, BOM, photos  [TO COMPLETE]
 ├── requirements.txt
-├── LICENSE                      # MIT — applies to code
-├── LICENSE-DATA                 # CC BY 4.0 — applies to data and hardware files
+├── LICENSE                   # MIT — code
+├── LICENSE-DATA              # CC BY 4.0 — data and hardware files
 └── README.md
 ```
 
@@ -151,8 +152,8 @@ SCENT/
 
 ## Licensing
 
-- **Code** (`code/`): MIT License — see `LICENSE`
-- **Data** (`data/`) **and hardware files** (`hardware/`): Creative Commons Attribution 4.0 International (CC BY 4.0) — see `LICENSE-DATA`
+- **Code** (`code/`): MIT — see `LICENSE`
+- **Data** (`data/`) and **hardware files** (`hardware/`): CC BY 4.0 — see `LICENSE-DATA`
 
 Both permit reuse with attribution.
 
@@ -160,13 +161,13 @@ Both permit reuse with attribution.
 
 ## Citation
 
-> **TO COMPLETE:** Archive a tagged release to Zenodo and add the resulting DOI here, then cite that DOI in the manuscript's Data Availability statement. A bare GitHub URL is not a persistent identifier and can change or disappear; journals increasingly expect a DOI.
->
-> Steps: push everything above → tag a release (`v1.0`) on GitHub → sign in to Zenodo with GitHub → enable the SCENT repository under Zenodo's GitHub settings → create the release. Zenodo mints the DOI automatically. Note that Zenodo only captures releases created *after* the integration is enabled, so enable it first.
+Archived on Zenodo. Please cite the DOI rather than the GitHub URL:
 
 ```
-[Zenodo DOI once minted]
+[insert v1.1 DOI after tagging]
 ```
+
+Zenodo also issues a concept DOI that always resolves to the newest version; citing that is preferable if further revisions are expected during review.
 
 ---
 
