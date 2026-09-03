@@ -2,7 +2,7 @@
 
 Low-cost embedded electronic nose for volatile organic compound (VOC) headspace classification.
 
-Data, analysis code, and hardware files supporting:
+Data and analysis code supporting:
 
 > Nambi, T., Bhimireddy, N. & McElroy, J. P. *Resistance-ratio normalization does not resolve humidity-limited confusion in a three-sensor offline electronic nose.* (under review)
 
@@ -24,17 +24,38 @@ The residual glycerol/water confusion under the three MQ channels is physical, n
 
 ---
 
-## Reproducing every reported value
+## Repository contents
+
+```
+SCENT/
+├── Test 3 Data/                          # primary dataset, 450 trials (18 CSVs)
+├── SCENT_baseline_normalization_trials/  # ablation dataset, 245 trials
+├── Scent analysis                        # analysis script (Python)
+├── Requirements.txt                      # package versions
+├── License                               # MIT — code
+├── Data License                          # CC BY 4.0 — data
+└── README.md
+```
+
+---
+
+## Running the analysis
+
+The script reads all trial CSVs from a single directory. The two datasets currently live in separate folders, so copy them into one directory first:
 
 ```bash
 git clone https://github.com/Fire-Dev2/SCENT.git
 cd SCENT
-pip install -r requirements.txt
-cd code
-python scent_analysis.py --data-dir ../data --out-dir ../figures
+pip install -r Requirements.txt
+
+mkdir -p data figures
+cp "Test 3 Data"/*.csv data/
+cp SCENT_baseline_normalization_trials/*.csv data/
+
+python "Scent analysis" --data-dir data --out-dir figures
 ```
 
-One script regenerates everything in the manuscript and the supplementary material. Runtime is a few minutes, dominated by the label-permutation test; pass `--permutations 60` to shorten it. All results are deterministic under a fixed seed (`random_state=42`).
+Runtime is a few minutes, dominated by the label-permutation test; pass `--permutations 60` to shorten it. All results are deterministic under a fixed seed (`random_state=42`).
 
 **Outputs written to `figures/`:**
 
@@ -59,11 +80,9 @@ The script also prints the exact binomial and permutation tests against chance, 
 
 ## Data
 
-Two datasets, both in `data/`.
-
 ### Primary dataset — 450 trials
 
-Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 trials) **on separate days**. Trial order was randomized and interleaved across analytes rather than blocked, so within-session baseline drift is distributed across classes rather than confounded with class identity.
+In `Test 3 Data/`. Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 trials) **on separate days**. Trial order was randomized and interleaved across analytes rather than blocked, so within-session baseline drift is distributed across classes rather than confounded with class identity.
 
 | Analyte | Batch A (40 trials) | Batch B (10 trials) |
 |---|---|---|
@@ -81,7 +100,7 @@ The `_80` / `_20` suffixes refer to the trial split, not to concentration. All a
 
 ### Ablation dataset — 245 trials
 
-`New_Protocol_Dataset.csv`. Same nine analytes under a modified protocol in which the **clean-air baseline resistance R₀ of each channel was recorded immediately before every exposure**, permitting resistance-ratio features to be computed per trial. Acquired over two days (`Batch_Day` column): 35 trials each for glycerol and distilled water, the pair responsible for the dominant error mode, and 25 for each of the other seven.
+In `SCENT_baseline_normalization_trials/`, file `New_Protocol_Dataset.csv`. Same nine analytes under a modified protocol in which the **clean-air baseline resistance R₀ of each channel was recorded immediately before every exposure**, permitting resistance-ratio features to be computed per trial. Acquired over two days (`Batch_Day` column): 35 trials each for glycerol and distilled water, the pair responsible for the dominant error mode, and 25 for each of the other seven.
 
 This dataset supports the normalization ablation and the humidity-fusion result. It is a separate acquisition from the primary dataset, so the headline three-channel accuracy and the raw-versus-normalized comparison are **not matched trial-for-trial** — stated as a limitation in the manuscript.
 
@@ -116,44 +135,14 @@ R₀ is logged in load-resistor units, so RL cancels in the ratio.
 
 ### Data integrity
 
-`scent_analysis.py` runs automatic checks before computing any metric: trial counts, class balance, exact-duplicate detection, and per-analyte signal spread. The spread check exists because a batch of genuinely independent trials varies well above ADC quantisation; a near-zero spread indicates replicated or derived rows rather than independent measurements. Both datasets pass, and the check prints a warning naming any analyte that fails.
-
----
-
-## Hardware
-
-> **TO COMPLETE.** Referenced by the manuscript, not yet deposited.
-
-- `hardware/chamber.stl`, `hardware/chamber.step` — sampling chamber CAD (Autodesk Fusion 360, printed in PETG)
-- `hardware/photos/` — photographs of the assembled device
-- `hardware/wiring.md` — sensor-to-ADS1115-to-Pi wiring
-- `hardware/bill_of_materials.csv` — template present; needs real per-item supplier and price. The manuscript claims $83 total, so the rows must sum to that figure.
-
-Acquisition firmware (sensor sampling, 30 s baseline / 60 s exposure / 120 s purge phase timing, CSV logging) is also not yet deposited. Reviewers assessing reproducibility will look for it.
-
----
-
-## Repository layout
-
-```
-SCENT/
-├── code/
-│   └── scent_analysis.py     # reproduces every reported value and figure
-├── data/                     # 18 primary CSVs + New_Protocol_Dataset.csv
-├── figures/                  # generated on first run
-├── hardware/                 # CAD, BOM, photos  [TO COMPLETE]
-├── requirements.txt
-├── LICENSE                   # MIT — code
-├── LICENSE-DATA              # CC BY 4.0 — data and hardware files
-└── README.md
-```
+The analysis script runs automatic checks before computing any metric: trial counts, class balance, exact-duplicate detection, and per-analyte signal spread. The spread check exists because a batch of genuinely independent trials varies well above ADC quantisation; a near-zero spread indicates replicated or derived rows rather than independent measurements. Both datasets pass, and the check prints a warning naming any analyte that fails.
 
 ---
 
 ## Licensing
 
-- **Code** (`code/`): MIT — see `LICENSE`
-- **Data** (`data/`) and **hardware files** (`hardware/`): CC BY 4.0 — see `LICENSE-DATA`
+- **Code**: MIT — see `License`
+- **Data**: CC BY 4.0 — see `Data License`
 
 Both permit reuse with attribution.
 
@@ -161,13 +150,13 @@ Both permit reuse with attribution.
 
 ## Citation
 
-Archived on Zenodo. Please cite the DOI rather than the GitHub URL:
+Please cite the manuscript. The repository is referenced in the paper as:
 
 ```
-[insert v1.1 DOI after tagging]
+https://github.com/Fire-Dev2/SCENT
 ```
 
-Zenodo also issues a concept DOI that always resolves to the newest version; citing that is preferable if further revisions are expected during review.
+Tagged releases are listed under Releases; `v4` is current.
 
 ---
 
