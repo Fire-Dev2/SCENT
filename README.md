@@ -2,11 +2,7 @@
 
 Low-cost embedded electronic nose for volatile organic compound (VOC) headspace classification.
 
-<<<<<<< HEAD
 Data, acquisition code, and analysis code supporting:
-=======
-Data and analysis code supporting:
->>>>>>> 532ffca9e9aad902d80267063c0dbf4166dcabe2
 
 > Nambi, T., Bhimireddy, N. & McElroy, J. P. *Humidity fusion, not resistance-ratio normalization, resolves the limiting confusion in a low-cost three-sensor offline electronic nose.* (under review)
 
@@ -34,14 +30,9 @@ The residual glycerol/water confusion under the three MQ channels is physical, n
 SCENT/
 ├── Test 3 Data/                          # primary dataset, 450 trials (18 CSVs)
 ├── SCENT_baseline_normalization_trials/  # ablation dataset, 245 trials
-<<<<<<< HEAD
 ├── acquisition.py                        # runs one trial on the Raspberry Pi
 ├── Scent analysis                        # reproduces every reported value
 ├── Requirements.txt
-=======
-├── Scent analysis                        # analysis script (Python)
-├── Requirements.txt                      # package versions
->>>>>>> 532ffca9e9aad902d80267063c0dbf4166dcabe2
 ├── License                               # MIT — code
 ├── Data License                          # CC BY 4.0 — data
 └── README.md
@@ -49,7 +40,6 @@ SCENT/
 
 ---
 
-<<<<<<< HEAD
 ## Acquisition
 
 `acquisition.py` runs one trial of the three-phase protocol on the Pi:
@@ -78,11 +68,6 @@ Hardware: MQ-3, MQ-9, and MQ-135 read through an ADS1115 on A0/A1/A2; BME680 for
 ---
 
 ## Reproducing every reported value
-=======
-## Running the analysis
-
-The script reads all trial CSVs from a single directory. The two datasets currently live in separate folders, so copy them into one directory first:
->>>>>>> 532ffca9e9aad902d80267063c0dbf4166dcabe2
 
 ```bash
 git clone https://github.com/Fire-Dev2/SCENT.git
@@ -93,11 +78,7 @@ mkdir -p data figures
 cp "Test 3 Data"/*.csv data/
 cp SCENT_baseline_normalization_trials/*.csv data/
 
-<<<<<<< HEAD
 python3 "Scent analysis" --data-dir data --out-dir figures
-=======
-python "Scent analysis" --data-dir data --out-dir figures
->>>>>>> 532ffca9e9aad902d80267063c0dbf4166dcabe2
 ```
 
 Runtime is a few minutes, dominated by the label-permutation test; pass `--permutations 60` to shorten it. All results are deterministic under a fixed seed (`random_state=42`).
@@ -209,11 +190,7 @@ Please cite the manuscript. The repository is referenced in the paper as:
 https://github.com/Fire-Dev2/SCENT
 ```
 
-<<<<<<< HEAD
 Tagged releases are listed under Releases.
-=======
-Tagged releases are listed under Releases; `v4` is current.
->>>>>>> 532ffca9e9aad902d80267063c0dbf4166dcabe2
 
 ---
 
