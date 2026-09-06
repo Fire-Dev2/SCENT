@@ -2,15 +2,15 @@
 
 Low-cost embedded electronic nose for volatile organic compound (VOC) headspace classification.
 
-Data, analysis code, and hardware files supporting:
+Data, acquisition code, and analysis code supporting:
 
-> Nambi, T., Bhimireddy, N. & McElroy, J. P. *Resistance-ratio normalization does not resolve humidity-limited confusion in a three-sensor offline electronic nose.* (under review)
+> Nambi, T., Bhimireddy, N. & McElroy, J. P. *Humidity fusion, not resistance-ratio normalization, resolves the limiting confusion in a low-cost three-sensor offline electronic nose.* (under review)
 
 ---
 
 ## What this is
 
-SCENT is an $83 open-hardware electronic nose. Three MQ-series metal oxide semiconductor (MOS) gas sensors sit in a 3D-printed PETG chamber with active purge fluidics. Acquisition, feature extraction, and classification all run on a Raspberry Pi 5 with no network dependency. A BME680 and a CCS811 are logged alongside the array.
+SCENT is an $83 open-hardware electronic nose. Three MQ-series metal oxide semiconductor (MOS) gas sensors sit in a 3D-printed PETG chamber with active purge fluidics. Acquisition, feature extraction, and classification all run on a Raspberry Pi 5 with no network dependency.
 
 Three results:
 
@@ -24,31 +24,78 @@ The residual glycerol/water confusion under the three MQ channels is physical, n
 
 ---
 
+## Repository contents
+
+```
+SCENT/
+├── Test 3 Data/                          # primary dataset, 450 trials (18 CSVs)
+├── SCENT_baseline_normalization_trials/  # ablation dataset, 245 trials
+├── acquisition.py                        # runs one trial on the Raspberry Pi
+├── Scent analysis                        # reproduces every reported value
+├── Requirements.txt
+├── License                               # MIT — code
+├── Data License                          # CC BY 4.0 — data
+└── README.md
+```
+
+---
+
+## Acquisition
+
+`acquisition.py` runs one trial of the three-phase protocol on the Pi:
+
+| Phase | Duration | |
+|---|---|---|
+| baseline | 30 s | clean-air stabilization before the sample is introduced |
+| exposure | 60 s | sample headspace present |
+| purge | 120 s | active exhaust, sensors returning to baseline |
+
+```bash
+python3 acquisition.py --trial 1 --scent ethanol --outdir data
+```
+
+All channels are sampled at **1 Hz** and each phase is reduced to the **arithmetic mean** of its samples, so one trial yields one value per channel per phase and the script writes one record per trial.
+
+**The analyses in the manuscript use the exposure-phase columns.** The deposited datasets below carry those columns only, under the shorter names given in the column table.
+
+Two implementation details the manuscript relies on:
+
+- The CCS811 environmental compensation register (`ENV_DATA`, `0x05`) is never written, so the TVOC and eCO2 outputs are independent of the BME680 readings.
+- `wait_ccs_ready()` polls the data-ready flag before every read, so logged values are never stale returns from a failed transaction.
+
+Hardware: MQ-3, MQ-9, and MQ-135 read through an ADS1115 on A0/A1/A2; BME680 for temperature and relative humidity; CCS811 for eCO2 and TVOC. All on I²C.
+
+---
+
 ## Reproducing every reported value
 
 ```bash
 git clone https://github.com/Fire-Dev2/SCENT.git
 cd SCENT
-pip install -r requirements.txt
-cd code
-python scent_analysis.py --data-dir ../data --out-dir ../figures
+pip install -r Requirements.txt
+
+mkdir -p data figures
+cp "Test 3 Data"/*.csv data/
+cp SCENT_baseline_normalization_trials/*.csv data/
+
+python3 "Scent analysis" --data-dir data --out-dir figures
 ```
 
-One script regenerates everything in the manuscript and the supplementary material. Runtime is a few minutes, dominated by the label-permutation test; pass `--permutations 60` to shorten it. All results are deterministic under a fixed seed (`random_state=42`).
+Runtime is a few minutes, dominated by the label-permutation test; pass `--permutations 60` to shorten it. All results are deterministic under a fixed seed (`random_state=42`).
 
 **Outputs written to `figures/`:**
 
 | Output | Corresponds to |
 |---|---|
 | `Figure2_confusion_matrix.png` / `.pdf` | Manuscript Fig. 2 |
-| `Figure3_humidity_fusion.png` / `.pdf` | Manuscript Fig. 3 |
-| `FigureS1_feature_importance.png` | Supplementary Fig. S1 |
-| `FigureS2_normalization_ablation.png` | Supplementary Fig. S2 |
-| `TableI_normalization.csv` | Manuscript Table I |
-| `TableII_per_class_primary.csv` | Manuscript Table II |
-| `TableS1_classifiers.csv` | Supplementary Table S1 |
-| `TableS2_ablation_per_class.csv` | Supplementary Table S2 |
-| `TableS3_humidity_fusion.csv` | Supplementary Table S3 |
+| `Figure3_humidity_fusion.png` / `.pdf` | Manuscript Fig. 5 |
+| `FigureS1_feature_importance.png` | Manuscript Fig. 3 |
+| `FigureS2_normalization_ablation.png` | Manuscript Fig. 4 |
+| `TableI_normalization.csv` | Manuscript Table 3 |
+| `TableII_per_class_primary.csv` | Manuscript Table 1 |
+| `TableS1_classifiers.csv` | Manuscript Table 2 |
+| `TableS2_ablation_per_class.csv` | Per-class ablation detail |
+| `TableS3_humidity_fusion.csv` | Manuscript Table 4 |
 | `results_summary.json` | Every reported statistic, machine-readable |
 
 The script also prints the exact binomial and permutation tests against chance, the McNemar and paired-t tests on the normalization ablation, the batch and cross-day holdouts, the seven-classifier comparison, and the per-analyte mean humidity that underpins the physical explanation.
@@ -59,11 +106,9 @@ The script also prints the exact binomial and permutation tests against chance, 
 
 ## Data
 
-Two datasets, both in `data/`.
-
 ### Primary dataset — 450 trials
 
-Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 trials) **on separate days**. Trial order was randomized and interleaved across analytes rather than blocked, so within-session baseline drift is distributed across classes rather than confounded with class identity.
+In `Test 3 Data/`. Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 trials) **on separate days**. Trial order was randomized and interleaved across analytes rather than blocked, so within-session baseline drift is distributed across classes rather than confounded with class identity.
 
 | Analyte | Batch A (40 trials) | Batch B (10 trials) |
 |---|---|---|
@@ -77,13 +122,13 @@ Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 tr
 | Hydrogen peroxide | `Hydrogen_Peroxide_80_Sensor_Data.csv` | `Hydrogen_Peroxide_20.csv` |
 | Propylene glycol | `Propylene_Glycol_80_Data.csv` | `Propylene_Glycol_20_Sensor_Data.csv` |
 
-The `_80` / `_20` suffixes refer to the trial split, not to concentration. All analytes were used undiluted as purchased.
+The `_80` / `_20` suffixes refer to the trial split, not to concentration. All analytes were used undiluted as purchased, 5 mL per trial, equilibrated 30 min before sampling.
 
 ### Ablation dataset — 245 trials
 
-`New_Protocol_Dataset.csv`. Same nine analytes under a modified protocol in which the **clean-air baseline resistance R₀ of each channel was recorded immediately before every exposure**, permitting resistance-ratio features to be computed per trial. Acquired over two days (`Batch_Day` column): 35 trials each for glycerol and distilled water, the pair responsible for the dominant error mode, and 25 for each of the other seven.
+In `SCENT_baseline_normalization_trials/`, file `New_Protocol_Dataset.csv`. Same nine analytes under a modified protocol in which the **clean-air baseline resistance R₀ of each channel was recorded immediately before every exposure**, permitting resistance-ratio features to be computed per trial. Acquired over two days (`Batch_Day` column): 35 trials each for glycerol and distilled water, the pair responsible for the dominant error mode, and 25 for each of the other seven.
 
-This dataset supports the normalization ablation and the humidity-fusion result. It is a separate acquisition from the primary dataset, so the headline three-channel accuracy and the raw-versus-normalized comparison are **not matched trial-for-trial** — stated as a limitation in the manuscript.
+This is a separate acquisition from the primary dataset, so the headline three-channel accuracy and the raw-versus-normalized comparison are **not matched trial-for-trial** — stated as a limitation in the manuscript.
 
 ### Column format
 
@@ -93,15 +138,23 @@ This dataset supports the normalization ablation and the humidity-fusion result.
 | `MQ9_V` | V | MQ-9 divider output (combustible aliphatics, CO) |
 | `MQ135_V` | V | MQ-135 divider output (air quality, NH₃) |
 | `MQ3_R0`, `MQ9_R0`, `MQ135_R0` | load-resistor units | Per-trial clean-air baseline resistance (ablation dataset only) |
-| `TVOC_ppb` | ppb | Total VOC, CCS811 |
+| `TVOC_ppb` | ppb | Total VOC, CCS811 — **excluded from all analyses, see below** |
 | `eCO2_ppm` | ppm | Equivalent CO₂, CCS811 |
-| `Temp_C` | °C | Ambient temperature, BME680 |
-| `Humidity_pct` | % RH | Ambient relative humidity, BME680 |
+| `Temp_C` | °C | In-chamber temperature, BME680 |
+| `Humidity_pct` | % RH | In-chamber relative humidity, BME680 |
 | `Trial_ID` | — | Trial index within analyte |
 | `Batch_Day` | — | Acquisition day (ablation dataset only) |
 | `Label` | — | Analyte name |
 
-**Which columns are classifier inputs:** the three MQ voltages for the primary result; those three plus `Humidity_pct` for the fusion result; `Rs/R0` derived from the MQ voltages and the R₀ columns for the ablation. `TVOC_ppb`, `eCO2_ppm`, and `Temp_C` are logged for transparency and are not used by any reported model.
+Every value is the mean over the 60 s exposure phase, 60 samples per trial.
+
+**Classifier inputs:** the three MQ voltages for the primary result; those three plus `Humidity_pct` for the fusion result; Rs/R0 derived from the MQ voltages and the R₀ columns for the ablation. `eCO2_ppm` and `Temp_C` are evaluated as alternative fourth features but are not part of the headline model.
+
+### The TVOC column
+
+`TVOC_ppb` is **excluded from every analysis** and is retained only for completeness. Across both datasets the nine analyte classes occupy strictly disjoint TVOC bands, with a minimum inter-class gap of +4.635 pooled standard deviations and no overlap in any of the 36 class pairs; every other channel has a negative minimum gap and overlapping pairs. Fitted alone the channel classifies all nine analytes at 100.0 ± 0.0%.
+
+Acquisition-order artifacts, derivation from the MOS channels, environmental compensation, cached reads, and quantization have been excluded. The behavior is unexplained and is reported as such in the manuscript. Do not use this column.
 
 ### Feature definitions
 
@@ -116,44 +169,14 @@ R₀ is logged in load-resistor units, so RL cancels in the ratio.
 
 ### Data integrity
 
-`scent_analysis.py` runs automatic checks before computing any metric: trial counts, class balance, exact-duplicate detection, and per-analyte signal spread. The spread check exists because a batch of genuinely independent trials varies well above ADC quantisation; a near-zero spread indicates replicated or derived rows rather than independent measurements. Both datasets pass, and the check prints a warning naming any analyte that fails.
-
----
-
-## Hardware
-
-> **TO COMPLETE.** Referenced by the manuscript, not yet deposited.
-
-- `hardware/chamber.stl`, `hardware/chamber.step` — sampling chamber CAD (Autodesk Fusion 360, printed in PETG)
-- `hardware/photos/` — photographs of the assembled device
-- `hardware/wiring.md` — sensor-to-ADS1115-to-Pi wiring
-- `hardware/bill_of_materials.csv` — template present; needs real per-item supplier and price. The manuscript claims $83 total, so the rows must sum to that figure.
-
-Acquisition firmware (sensor sampling, 30 s baseline / 60 s exposure / 120 s purge phase timing, CSV logging) is also not yet deposited. Reviewers assessing reproducibility will look for it.
-
----
-
-## Repository layout
-
-```
-SCENT/
-├── code/
-│   └── scent_analysis.py     # reproduces every reported value and figure
-├── data/                     # 18 primary CSVs + New_Protocol_Dataset.csv
-├── figures/                  # generated on first run
-├── hardware/                 # CAD, BOM, photos  [TO COMPLETE]
-├── requirements.txt
-├── LICENSE                   # MIT — code
-├── LICENSE-DATA              # CC BY 4.0 — data and hardware files
-└── README.md
-```
+The analysis script runs automatic checks before computing any metric: trial counts, class balance, exact-duplicate detection, and per-analyte signal spread. The spread check exists because a batch of genuinely independent trials varies well above ADC quantisation; a near-zero spread indicates replicated or derived rows rather than independent measurements. Both datasets pass, and the check prints a warning naming any analyte that fails.
 
 ---
 
 ## Licensing
 
-- **Code** (`code/`): MIT — see `LICENSE`
-- **Data** (`data/`) and **hardware files** (`hardware/`): CC BY 4.0 — see `LICENSE-DATA`
+- **Code**: MIT — see `License`
+- **Data**: CC BY 4.0 — see `Data License`
 
 Both permit reuse with attribution.
 
@@ -161,13 +184,13 @@ Both permit reuse with attribution.
 
 ## Citation
 
-Archived on Zenodo. Please cite the DOI rather than the GitHub URL:
+Please cite the manuscript. The repository is referenced in the paper as:
 
 ```
-[insert v1.1 DOI after tagging]
+https://github.com/Fire-Dev2/SCENT
 ```
 
-Zenodo also issues a concept DOI that always resolves to the newest version; citing that is preferable if further revisions are expected during review.
+Tagged releases are listed under Releases.
 
 ---
 
