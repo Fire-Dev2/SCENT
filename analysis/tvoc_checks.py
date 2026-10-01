@@ -130,8 +130,51 @@ def main():
         print(f"{NAMES[ch]:>22} {np.median(rs):>+12.3f} "
               f"{max(abs(r) for r in rs):>12.3f} {sig:>6}/9")
 
+
+    # ---- 4. dispersion and class-mean range, per channel ------------------
+    print("\n4. WITHIN-CLASS DISPERSION AND CLASS-MEAN RANGE")
+    print(f"{'channel':22s} {'median CV %':>12s} {'max/min class mean':>20s}")
+    dispersion = {}
+    for c in CHANNELS:
+        name = NAMES[c]
+        g = df.groupby("Analyte")[c]
+        cv = float((g.std(ddof=1) / g.mean().abs() * 100).median())
+        means = g.mean()
+        ratio = float(means.max() / means.min())
+        dispersion[c] = {"median_within_class_cv_pct": cv, "class_mean_ratio": ratio}
+        print(f"{name:22s} {cv:12.2f} {ratio:20.2f}")
+
+    # ---- 5. TVOC against eCO2, decomposed between and within classes -------
+    print("\n5. CCS811 TVOC AGAINST CCS811 eCO2, DECOMPOSED")
+    within = df.groupby("Analyte")[["TVOC_ppb", "eCO2_ppm"]].corr() \
+               .xs("TVOC_ppb", level=1)["eCO2_ppm"]
+    cm = df.groupby("Analyte")[["TVOC_ppb", "eCO2_ppm"]].mean()
+    decomp = {
+        "median_within_analyte_r": float(within.median()),
+        "r_between_class_means": float(cm["TVOC_ppb"].corr(cm["eCO2_ppm"])),
+        "r_pooled": float(df["TVOC_ppb"].corr(df["eCO2_ppm"])),
+    }
+    for k, v in decomp.items():
+        print(f"   {k:28s} {v:+.3f}")
+    print("   A monotone rescaling would preserve class ordering; the near-zero")
+    print("   between-class correlation shows eCO2 does not reproduce TVOC's ordering.")
+
+    # ---- 6. TVOC class means, descending ----------------------------------
+    print("\n6. CCS811 TVOC CLASS MEANS, DESCENDING")
+    tv_means = df.groupby("Analyte")["TVOC_ppb"].mean().sort_values(ascending=False)
+    for a, v in tv_means.items():
+        print(f"   {a:22s} {v:9.1f} ppb")
+    both = pd.concat([df, pd.read_csv(DATA / "New_Protocol_Dataset.csv")],
+                     ignore_index=True)
+    rng = (float(both["TVOC_ppb"].min()), float(both["TVOC_ppb"].max()))
+    print(f"   recorded range across both datasets: {rng[0]:.0f}-{rng[1]:.0f} ppb")
+
     (OUT / "tvoc_checks_results.json").write_text(json.dumps(
-        {"separation": rows, "correlation_with_tvoc": corr,
+        {
+        "dispersion": dispersion,
+        "tvoc_vs_eco2_decomposed": decomp,
+        "tvoc_class_means_ppb": {k: float(v) for k, v in tv_means.items()},
+        "tvoc_range_both_datasets_ppb": list(rng),"separation": rows, "correlation_with_tvoc": corr,
          "trend_with_trial_index": trend}, indent=2))
 
 

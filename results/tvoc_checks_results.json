@@ -1,4 +1,54 @@
 {
+  "dispersion": {
+    "MQ3_V": {
+      "median_within_class_cv_pct": 1.2373201820802395,
+      "class_mean_ratio": 1.909209098782878
+    },
+    "MQ9_V": {
+      "median_within_class_cv_pct": 1.5202476094909647,
+      "class_mean_ratio": 1.4107603295390225
+    },
+    "MQ135_V": {
+      "median_within_class_cv_pct": 1.3172349913721717,
+      "class_mean_ratio": 1.961277616865749
+    },
+    "Humidity_pct": {
+      "median_within_class_cv_pct": 2.4363499313705783,
+      "class_mean_ratio": 1.2831877063298407
+    },
+    "Temp_C": {
+      "median_within_class_cv_pct": 2.154972503218991,
+      "class_mean_ratio": 1.0521336149774712
+    },
+    "eCO2_ppm": {
+      "median_within_class_cv_pct": 1.2181878809849958,
+      "class_mean_ratio": 1.17125809091729
+    },
+    "TVOC_ppb": {
+      "median_within_class_cv_pct": 1.3328381840990373,
+      "class_mean_ratio": 8.715496486108533
+    }
+  },
+  "tvoc_vs_eco2_decomposed": {
+    "median_within_analyte_r": 0.5171718080312845,
+    "r_between_class_means": 0.0006188802356191734,
+    "r_pooled": 0.0034349609009883208
+  },
+  "tvoc_class_means_ppb": {
+    "Ethyl_Acetate": 2178.747956,
+    "Ethanol": 1949.412012,
+    "Acetone": 1529.5600760000002,
+    "Propylene_Glycol": 931.684064,
+    "Acetic_Acid": 678.5415579999999,
+    "Ammonia": 609.400048,
+    "Hydrogen_Peroxide": 454.78343800000005,
+    "Glycerol": 334.49505400000004,
+    "Distilled_Water": 249.985524
+  },
+  "tvoc_range_both_datasets_ppb": [
+    242.471,
+    2293.85
+  ],
   "separation": {
     "MQ3_V": {
       "F": 16209.156995637235,
