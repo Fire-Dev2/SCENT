@@ -2,7 +2,12 @@
 """
 SCENT: nine-class chemical headspace classification from a low-cost MOS sensor array.
 
-Reproduces every value and figure reported in the manuscript.
+Reproduces the single-seed results and Figures 2-5.
+
+The seed sweep, leave-one-sensor-out ablation, learning curve and CCS811
+exclusion checks live in analysis/ and are run separately. The intervals
+quoted in the manuscript come from analysis/seed_sweep.py, not from the
+across-fold spread this script prints.
 
   Primary dataset (450 trials, 9 analytes, 3 MQ channels)
     five-fold stratified CV accuracy and macro F1; exact binomial and
@@ -19,10 +24,11 @@ Reproduces every value and figure reported in the manuscript.
     McNemar against the three-channel model.
 
 Usage:
-    python scent_analysis.py --data-dir ../data --out-dir ../figures
-    python scent_analysis.py --data-dir ../data --out-dir ../figures --permutations 200
+    python scent_analysis.py --data-dir data --out-dir figures
+    python scent_analysis.py --data-dir data --out-dir figures --permutations 200
 
-Deterministic under the fixed seed. Runtime is a few minutes, dominated by the
+Deterministic at random_state=42, which is a reproducibility guarantee and
+not an uncertainty estimate; see analysis/seed_sweep.py. Runtime is a few minutes, dominated by the
 permutation test; lower --permutations to shorten it.
 """
 

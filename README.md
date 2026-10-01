@@ -4,7 +4,9 @@ Low-cost embedded electronic nose for volatile organic compound (VOC) headspace 
 
 Data, acquisition code, and analysis code supporting:
 
-> Nambi, T., Bhimireddy, N. & McElroy, J. P. *Humidity fusion, not resistance-ratio normalization, resolves the limiting confusion in a low-cost three-sensor offline electronic nose.* (under review)
+> Nambi, T., Bhimireddy, N. & McElroy, J. P. *Isolating the contributions of
+> resistance-ratio normalization and humidity fusion in a low-cost three-sensor
+> offline electronic nose.* Manuscript sensors-4609768, under revision at *Sensors*.
 
 ---
 
@@ -12,15 +14,32 @@ Data, acquisition code, and analysis code supporting:
 
 SCENT is an $83 open-hardware electronic nose. Three MQ-series metal oxide semiconductor (MOS) gas sensors sit in a 3D-printed PETG chamber with active purge fluidics. Acquisition, feature extraction, and classification all run on a Raspberry Pi 5 with no network dependency.
 
-Three results:
+The chamber STL and the Fritzing wiring sketch are in [`hardware/`](hardware/).
 
-| | |
-|---|---|
-| Three MQ channels, nine headspaces | **89.8 ± 0.8%** accuracy (chance 11.1%) |
-| Adding Rs/R0 normalization | **80.0 ± 1.5%** — no significant change (McNemar p = 0.076) |
-| Adding BME680 relative humidity | **99.6 ± 0.5%** (McNemar p < 0.001) |
+Three results. Every figure below is the **mean ± SD across ten random seeds**,
+each seed shared by the fold splitter and the forest, with the observed range in
+brackets. Earlier versions of this README quoted a single seed's across-fold
+spread, which is a different and smaller quantity.
+
+| Feature set | Dataset | Accuracy |
+|---|---|---|
+| Three MQ channels | primary, n = 450 | **90.2 ± 0.5%** (89.3–90.9), chance 11.1% |
+| Three MQ + BME680 relative humidity | primary, n = 450 | **99.3 ± 0.2%** (99.1–99.6) |
+| Raw divider voltage | ablation, n = 245 | **86.2 ± 0.9%** (85.3–87.3) |
+| Rs/R0 normalized | ablation, n = 245 | **82.4 ± 1.9%** (79.2–84.9) |
+
+Humidity fusion is significant at every seed (McNemar p from 5.4×10⁻¹¹ to
+6.8×10⁻⁹). Resistance-ratio normalization is not: across ten seeds McNemar p
+ranges from 0.034 to 1.00, and only two of ten fall below 0.05. The 3.8-point
+drop is a cost without a consistent significance test behind it, so the claim
+is **no benefit**, not active degradation.
 
 The residual glycerol/water confusion under the three MQ channels is physical, not a signal-conditioning artifact: both headspaces are water-dominated at ambient temperature. Resistance-ratio referencing does not resolve it; a humidity transducer does.
+
+A leave-one-sensor-out ablation (`analysis/loso.py`) shows the array is not
+minimal: dropping **MQ-9** costs 0.89 ± 0.83 points on three channels and
+−0.13 points on four, both inside seed noise. Dropping MQ-3 costs 8.58 points
+and MQ-135 2.62.
 
 ---
 
@@ -28,15 +47,23 @@ The residual glycerol/water confusion under the three MQ channels is physical, n
 
 ```
 SCENT/
-├── Test 3 Data/                          # primary dataset, 450 trials (18 CSVs)
-├── SCENT_baseline_normalization_trials/  # ablation dataset, 245 trials
-├── acquisition.py                        # runs one trial on the Raspberry Pi
-├── Scent analysis                        # reproduces every reported value
+├── data/                  # all 19 CSVs: 450 primary trials + 245 ablation trials
+├── hardware/              # chamber STL, Fritzing wiring sketch, part list
+├── analysis/
+│   ├── seed_sweep.py      # ten-seed sweep over the four feature sets
+│   ├── loso.py            # leave-one-sensor-out and single-channel ablation
+│   ├── learning_curve.py  # held-out accuracy against training-set size
+│   └── tvoc_checks.py     # exclusion evidence for the CCS811 channel
+├── results/               # JSON output of each script above, plus the per-seed CSV
+├── acquisition.py         # runs one trial on the Raspberry Pi
+├── scent_analysis.py      # single-seed results and Figures 2–5
 ├── Requirements.txt
-├── License                               # MIT — code
-├── Data License                          # CC BY 4.0 — data
+├── LICENSE                # MIT — code
+├── LICENSE-DATA           # CC BY 4.0 — data
 └── README.md
 ```
+
+`figures/` is generated output and is not committed.
 
 ---
 
@@ -67,21 +94,33 @@ Hardware: MQ-3, MQ-9, and MQ-135 read through an ADS1115 on A0/A1/A2; BME680 for
 
 ---
 
-## Reproducing every reported value
+## Reproducing the reported values
 
 ```bash
 git clone https://github.com/Fire-Dev2/SCENT.git
 cd SCENT
 pip install -r Requirements.txt
 
-mkdir -p data figures
-cp "Test 3 Data"/*.csv data/
-cp SCENT_baseline_normalization_trials/*.csv data/
-
-python3 "Scent analysis" --data-dir data --out-dir figures
+python3 scent_analysis.py --data-dir data --out-dir figures   # single-seed results, Figures 2-5
+python3 analysis/seed_sweep.py                                 # the reported mean +/- SD
+python3 analysis/loso.py                                       # leave-one-sensor-out
+python3 analysis/learning_curve.py                             # accuracy vs training-set size
+python3 analysis/tvoc_checks.py                                # CCS811 exclusion evidence
 ```
 
-Runtime is a few minutes, dominated by the label-permutation test; pass `--permutations 60` to shorten it. All results are deterministic under a fixed seed (`random_state=42`).
+The four scripts in `analysis/` default to `--data-dir data --out-dir results`
+and need no arguments from the repository root.
+
+`scent_analysis.py` takes a few minutes, dominated by the label-permutation
+test; pass `--permutations 60` to shorten it. `seed_sweep.py` and `loso.py`
+fit ten seeds each and take a few minutes more.
+
+**On seeds.** `scent_analysis.py` is deterministic at `random_state=42`, but a
+single seed is a reproducibility guarantee, not an uncertainty estimate. Seed 42
+sits at the top of the ten-seed range for humidity fusion and at the bottom for
+the normalized ablation, so it flatters one result and penalises the other. The
+intervals quoted in this README and in the manuscript come from
+`analysis/seed_sweep.py`, which is the number to compare against.
 
 **Outputs written to `figures/`:**
 
@@ -96,7 +135,16 @@ Runtime is a few minutes, dominated by the label-permutation test; pass `--permu
 | `TableS1_classifiers.csv` | Manuscript Table 2 |
 | `TableS2_ablation_per_class.csv` | Per-class ablation detail |
 | `TableS3_humidity_fusion.csv` | Manuscript Table 4 |
-| `results_summary.json` | Every reported statistic, machine-readable |
+| `results_summary.json` | Every single-seed statistic, machine-readable |
+
+**Outputs written to `results/` by the scripts in `analysis/`:**
+
+| Output | Corresponds to |
+|---|---|
+| `seed_sweep_results.json`, `seed_sweep_per_seed.csv` | Manuscript Table 8, the reported intervals |
+| `loso_results.json` | Leave-one-sensor-out, Section 3.3 |
+| `learning_curve_results.json` | Manuscript Fig. 8 |
+| `tvoc_checks_results.json` | Supplementary Tables S1–S4 |
 
 The script also prints the exact binomial and permutation tests against chance, the McNemar and paired-t tests on the normalization ablation, the batch and cross-day holdouts, the seven-classifier comparison, and the per-analyte mean humidity that underpins the physical explanation.
 
@@ -108,7 +156,7 @@ The script also prints the exact binomial and permutation tests against chance, 
 
 ### Primary dataset — 450 trials
 
-In `Test 3 Data/`. Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 trials) **on separate days**. Trial order was randomized and interleaved across analytes rather than blocked, so within-session baseline drift is distributed across classes rather than confounded with class identity.
+In `data/`. Nine analytes, 50 trials each, acquired in two batches per analyte (40 and 10 trials) **on separate days**. Trial order was randomized and interleaved across analytes rather than blocked, so within-session baseline drift is distributed across classes rather than confounded with class identity.
 
 | Analyte | Batch A (40 trials) | Batch B (10 trials) |
 |---|---|---|
@@ -126,7 +174,7 @@ The `_80` / `_20` suffixes refer to the trial split, not to concentration. All a
 
 ### Ablation dataset — 245 trials
 
-In `SCENT_baseline_normalization_trials/`, file `New_Protocol_Dataset.csv`. Same nine analytes under a modified protocol in which the **clean-air baseline resistance R₀ of each channel was recorded immediately before every exposure**, permitting resistance-ratio features to be computed per trial. Acquired over two days (`Batch_Day` column): 35 trials each for glycerol and distilled water, the pair responsible for the dominant error mode, and 25 for each of the other seven.
+In `data/New_Protocol_Dataset.csv`. Same nine analytes under a modified protocol in which the **clean-air baseline resistance R₀ of each channel was recorded immediately before every exposure**, permitting resistance-ratio features to be computed per trial. Acquired over two days (`Batch_Day` column): 35 trials each for glycerol and distilled water, the pair responsible for the dominant error mode, and 25 for each of the other seven.
 
 This is a separate acquisition from the primary dataset, so the headline three-channel accuracy and the raw-versus-normalized comparison are **not matched trial-for-trial** — stated as a limitation in the manuscript.
 
@@ -175,8 +223,8 @@ The analysis script runs automatic checks before computing any metric: trial cou
 
 ## Licensing
 
-- **Code**: MIT — see `License`
-- **Data**: CC BY 4.0 — see `Data License`
+- **Code**: MIT — see `LICENSE`
+- **Data**: CC BY 4.0 — see `LICENSE-DATA`
 
 Both permit reuse with attribution.
 

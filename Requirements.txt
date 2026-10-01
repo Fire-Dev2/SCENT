@@ -3,7 +3,10 @@ numpy>=1.26
 pandas>=2.0
 scikit-learn==1.8.0
 matplotlib>=3.8
+scipy>=1.11
+statsmodels>=0.14   # McNemar, used by scent_analysis.py and analysis/seed_sweep.py
 
 # Note: scikit-learn is pinned because random forest internals and therefore
-# exact fold-level accuracy can shift between minor versions. Reported numbers
-# (89.8% +/- 0.8%) were produced with scikit-learn 1.8.0 on Python 3.12.3.
+# exact fold-level accuracy can shift between minor versions. The reported
+# numbers (90.2% +/- 0.5% across ten seeds for the three-channel model) were
+# produced with scikit-learn 1.8.0 on Python 3.12.3.
