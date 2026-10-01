@@ -1,0 +1,96 @@
+{
+  "separation": {
+    "MQ3_V": {
+      "F": 16209.156995637235,
+      "min_gap_sd": -1.811629326142814,
+      "overlapping_pairs": 3,
+      "n_pairs": 36
+    },
+    "MQ9_V": {
+      "F": 3393.647282341308,
+      "min_gap_sd": -1.897916742177886,
+      "overlapping_pairs": 13,
+      "n_pairs": 36
+    },
+    "MQ135_V": {
+      "F": 10489.243056142346,
+      "min_gap_sd": -1.9683307980229818,
+      "overlapping_pairs": 4,
+      "n_pairs": 36
+    },
+    "Humidity_pct": {
+      "F": 502.8645903955096,
+      "min_gap_sd": -1.9816261364463421,
+      "overlapping_pairs": 25,
+      "n_pairs": 36
+    },
+    "Temp_C": {
+      "F": 54.02514776544946,
+      "min_gap_sd": -1.9619476037557317,
+      "overlapping_pairs": 27,
+      "n_pairs": 36
+    },
+    "eCO2_ppm": {
+      "F": 854.9750970192173,
+      "min_gap_sd": -1.9674320887948369,
+      "overlapping_pairs": 11,
+      "n_pairs": 36
+    },
+    "TVOC_ppb": {
+      "F": 87945.11035026013,
+      "min_gap_sd": 7.691544861519777,
+      "overlapping_pairs": 0,
+      "n_pairs": 36
+    }
+  },
+  "correlation_with_tvoc": {
+    "MQ3_V": {
+      "pearson": 0.9586027581119106,
+      "spearman": 0.7774778470068218
+    },
+    "MQ9_V": {
+      "pearson": -0.06476613163058403,
+      "spearman": 0.25787189557720874
+    },
+    "MQ135_V": {
+      "pearson": -0.174527771439157,
+      "spearman": 0.22642139548848497
+    },
+    "Humidity_pct": {
+      "pearson": -0.4641106373692432,
+      "spearman": -0.512690436070279
+    }
+  },
+  "trend_with_trial_index": {
+    "MQ3_V": {
+      "median_rho": 0.06771033430780717,
+      "max_abs_rho": 0.46579749827347455,
+      "n_significant": 1,
+      "n_classes": 9
+    },
+    "MQ9_V": {
+      "median_rho": -0.11685317923722208,
+      "max_abs_rho": 0.3908658712741557,
+      "n_significant": 2,
+      "n_classes": 9
+    },
+    "MQ135_V": {
+      "median_rho": 0.004465786314525811,
+      "max_abs_rho": 0.5193651416937095,
+      "n_significant": 2,
+      "n_classes": 9
+    },
+    "Humidity_pct": {
+      "median_rho": -0.000480249733320924,
+      "max_abs_rho": 0.39075105692384887,
+      "n_significant": 1,
+      "n_classes": 9
+    },
+    "TVOC_ppb": {
+      "median_rho": 0.11913565426170468,
+      "max_abs_rho": 0.611812725090036,
+      "n_significant": 1,
+      "n_classes": 9
+    }
+  }
+}
