@@ -18,18 +18,19 @@ reported build.
 
 ## Wiring
 
-`SCENT_wiring.fzz` opens in [Fritzing](https://fritzing.org). Parts in the
-sketch:
+`SCENT_wiring.fzz` opens in [Fritzing](https://fritzing.org). Parts in the sketch. The Fritzing library names the ADS1115, BME680 and
+CCS811 parts after Adafruit because those are the symbols it ships; the units
+actually built with were generic equivalents, as `BOM.csv` records:
 
 | Part | Role |
 |---|---|
 | Raspberry Pi 5 | acquisition host, I²C master |
-| Adafruit ADS1115 | 16-bit I²C ADC, reads the three MOS dividers on A0/A1/A2 |
+| ADS1115 | 16-bit I²C ADC, reads the three MOS dividers on A0/A1/A2 |
 | MQ-3 breakout | alcohols |
 | MQ-9 breakout | combustible aliphatics, CO |
 | Gas sensor breakout (MQ-135) | air quality, NH₃ |
-| Adafruit BME680 | in-chamber temperature and relative humidity |
-| Adafruit CCS811 | eCO2 and TVOC — logged, excluded from every analysis |
+| BME680 breakout | in-chamber temperature and relative humidity |
+| CCS811 breakout | eCO2 and TVOC — logged, excluded from every analysis |
 | 2-pin fan | active purge exhaust |
 | Momentary push button | trial start |
 
@@ -51,5 +52,32 @@ devices on the Pi's own bus.
 
 ## Bill of materials
 
-Not yet deposited. Quantities and suppliers are in the manuscript; a
-machine-readable BOM will be added here.
+`BOM.csv` — thirteen line items totalling **USD 83.00**, which is the figure
+quoted in the manuscript.
+
+| Category | USD |
+|---|---|
+| Compute (Pi 5 1 GB, PSU, microSD) | 53.00 |
+| Sensors (3 × MQ, BME680, CCS811) | 15.80 |
+| Electronics (ADS1115, fan, button, breadboard and wire) | 5.95 |
+| Chamber (PETG, 750 g at $11/kg) | 8.25 |
+| **Total** | **83.00** |
+
+Read it with these caveats, which belong in the manuscript too:
+
+- **Component cost only.** No shipping, tax, soldering iron, printer or
+  laptop. The build assumes you already have a 3D printer.
+- **Sourcing.** Everything but the Raspberry Pi came from AliExpress. The
+  sensor breakouts are generic rather than Adafruit or SparkFun parts, which
+  is most of why the sensing array comes to $15.80; the equivalent
+  Adafruit units would roughly treble that line.
+- **Not calibrated parts.** Generic MOS breakouts carry no calibration
+  certificate and unit-to-unit variation is not characterised here. The
+  classification results are for the specific units built, which is already
+  a stated limitation.
+- **Prices move.** The Pi 5 1 GB exists at $45 because memory prices rose;
+  the same pressure moves the other lines. Quote the figure with its date.
+- **Filament is the softest line.** 750 g at $0.011/g is the amount of PETG
+  attributed to one chamber. If that is a spool purchased rather than the
+  mass the slicer reports for this print, the per-device figure is lower and
+  the total falls below 83.
