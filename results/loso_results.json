@@ -105,6 +105,50 @@
     "Hydrogen peroxide": 1.0,
     "Propylene glycol": 1.0
   },
+  "paired_per_seed_differences": {
+    "without MQ-3, three channels": {
+      "mean": 8.577777777777785,
+      "sd": 0.6885303726590967,
+      "min": 7.555555555555557,
+      "max": 9.555555555555557,
+      "n_seeds_reduced_at_least_as_good": 0
+    },
+    "without MQ-9, three channels": {
+      "mean": 0.88888888888889,
+      "sd": 0.6285393610547055,
+      "min": -0.44444444444444287,
+      "max": 1.7777777777777715,
+      "n_seeds_reduced_at_least_as_good": 1
+    },
+    "without MQ-135, three channels": {
+      "mean": 2.6222222222222187,
+      "sd": 0.6267909867053721,
+      "min": 1.7777777777777857,
+      "max": 3.5555555555555713,
+      "n_seeds_reduced_at_least_as_good": 0
+    },
+    "without MQ-3, four features": {
+      "mean": 7.355555555555556,
+      "sd": 0.7366554009156656,
+      "min": 6.666666666666671,
+      "max": 8.8888888888889,
+      "n_seeds_reduced_at_least_as_good": 0
+    },
+    "without MQ-9, four features": {
+      "mean": -0.13333333333333286,
+      "sd": 0.15537908861779967,
+      "min": -0.44444444444444287,
+      "max": 0.0,
+      "n_seeds_reduced_at_least_as_good": 10
+    },
+    "without MQ-135, four features": {
+      "mean": 1.1777777777777758,
+      "sd": 0.3151414427582565,
+      "min": 0.4444444444444571,
+      "max": 1.5555555555555571,
+      "n_seeds_reduced_at_least_as_good": 0
+    }
+  },
   "per_class_f1_dropped": {
     "MQ-3": {
       "Acetic acid": 1.0,

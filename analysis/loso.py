@@ -61,6 +61,16 @@ def load():
     return pd.concat(fr, ignore_index=True)
 
 
+def per_seed(X, y):
+    """Accuracy at each seed, so differences can be paired seed for seed."""
+    acc = []
+    for s in range(N_SEEDS):
+        cv = StratifiedKFold(N_SPLITS, shuffle=True, random_state=s)
+        clf = RandomForestClassifier(N_EST, random_state=s)
+        acc.append(cross_val_score(clf, X, y, cv=cv).mean() * 100)
+    return np.array(acc)
+
+
 def sweep(X, y):
     acc = []
     for s in range(N_SEEDS):
@@ -134,6 +144,25 @@ def main():
         print(f"{'without ' + NAME[drop]:34s} {m:7.2f} +/- {sd:4.2f} "
               f"{lo:6.2f}-{hi:5.2f} {four_mean - m:+7.2f}")
 
+    # ---- paired per-seed differences, the correct uncertainty --------------
+    print("\nPAIRED PER-SEED DIFFERENCES (full model minus reduced model)")
+    print("The cost column above is the difference of seed means. These are the")
+    print("differences taken seed by seed, which is what carries the uncertainty.")
+    print(f"{'comparison':34s} {'mean diff':>10s} {'sd':>6s} {'range':>16s} {'seeds <= 0':>11s}")
+    base3, base4 = per_seed(df[MQ].values, y), per_seed(df[MQ + [RH]].values, y)
+    paired = {}
+    for label, base, cols in (("three channels", base3, MQ),
+                              ("four features", base4, MQ + [RH])):
+        for drop in MQ:
+            keep = [c for c in cols if c != drop]
+            d = base - per_seed(df[keep].values, y)
+            k = f"without {NAME[drop]}, {label}"
+            paired[k] = {"mean": float(d.mean()), "sd": float(d.std(ddof=1)),
+                         "min": float(d.min()), "max": float(d.max()),
+                         "n_seeds_reduced_at_least_as_good": int((d <= 0).sum())}
+            print(f"{k:34s} {d.mean():+10.2f} {d.std(ddof=1):6.2f} "
+                  f"{d.min():+7.2f} to {d.max():+5.2f} {int((d <= 0).sum()):>8d}/10")
+
     print("\nPER-CLASS F1 WHEN A CHANNEL IS DROPPED (seed 42, three-channel model)")
     hdr = f"{'analyte':20s} {'all three':>10s}" + "".join(
         f"{'-' + k:>12s}" for k in f1s)
@@ -152,6 +181,7 @@ def main():
                               "min": four_lo, "max": four_hi},
         "drop_one_of_four": four_rows,
         "per_class_f1_full": {DISPLAY[c]: full_f1[c] for c in classes},
+        "paired_per_seed_differences": paired,
         "per_class_f1_dropped": {k: {DISPLAY[c]: v[c] for c in classes}
                                  for k, v in f1s.items()},
     }, indent=2))
