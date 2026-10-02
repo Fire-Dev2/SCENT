@@ -30,16 +30,19 @@ spread, which is a different and smaller quantity.
 
 Humidity fusion is significant at every seed (McNemar p from 5.4×10⁻¹¹ to
 6.8×10⁻⁹). Resistance-ratio normalization is not: across ten seeds McNemar p
-ranges from 0.034 to 1.00, and only two of ten fall below 0.05. The 3.8-point
-drop is a cost without a consistent significance test behind it, so the claim
-is **no benefit**, not active degradation.
+ranges from 0.034 to 1.00, and only two of ten fall below 0.05. For the forest the 3.8-point drop
+reaches trial-level significance at only two of ten seeds, but the same division
+costs two linear classifiers 8-9 points, at eight and ten of ten seeds. The claim
+is therefore **no benefit and a consistent cost**, not a neutral transform.
 
 The residual glycerol/water confusion under the three MQ channels is physical, not a signal-conditioning artifact: both headspaces are water-dominated at ambient temperature. Resistance-ratio referencing does not resolve it; a humidity transducer does.
 
 A leave-one-sensor-out ablation (`analysis/loso.py`) shows the array is not
-minimal: dropping **MQ-9** costs 0.89 ± 0.83 points on three channels and
-−0.13 points on four, both inside seed noise. Dropping MQ-3 costs 8.58 points
-and MQ-135 2.62.
+minimal: differencing the full and reduced
+models seed by seed, dropping **MQ-9** costs 0.89 ± 0.63 points on three channels,
+with the two-channel model the more accurate at one of ten seeds, and −0.13 ± 0.16
+points on four, where the reduced model is at least as accurate at every seed.
+Dropping MQ-3 costs 8.58 ± 0.69 points and MQ-135 2.62 ± 0.63.
 
 ---
 
@@ -47,7 +50,9 @@ and MQ-135 2.62.
 
 ```
 SCENT/
-├── data/                  # all 19 CSVs: 450 primary trials + 245 ablation trials
+├── data/                  # 18 per-analyte CSVs = 450-trial primary acquisition;
+│                        # New_Protocol_Dataset.csv = 245-trial ablation acquisition
+│                        # (file-by-file breakdown under "Data" below)
 ├── hardware/              # chamber STL, Fritzing wiring sketch, part list
 ├── analysis/
 │   ├── seed_sweep.py      # ten-seed sweep over the four feature sets
@@ -56,7 +61,7 @@ SCENT/
 │   └── tvoc_checks.py     # exclusion evidence for the CCS811 channel
 ├── results/               # JSON output of each script above, plus the per-seed CSV
 ├── acquisition.py         # runs one trial on the Raspberry Pi
-├── scent_analysis.py      # single-seed results and Figures 2–5
+├── scent_analysis.py      # single-seed results and Figures 3–6
 ├── Requirements.txt
 ├── LICENSE                # MIT — code
 ├── LICENSE-DATA           # CC BY 4.0 — data
@@ -101,7 +106,7 @@ git clone https://github.com/Fire-Dev2/SCENT.git
 cd SCENT
 pip install -r Requirements.txt
 
-python3 scent_analysis.py --data-dir data --out-dir figures   # single-seed results, Figures 2-5
+python3 scent_analysis.py --data-dir data --out-dir figures   # single-seed results, Figures 3-6
 python3 analysis/seed_sweep.py                                 # the reported mean +/- SD
 python3 analysis/loso.py                                       # leave-one-sensor-out
 python3 analysis/learning_curve.py                             # accuracy vs training-set size
@@ -126,10 +131,10 @@ intervals quoted in this README and in the manuscript come from
 
 | Output | Corresponds to |
 |---|---|
-| `Figure2_confusion_matrix.png` / `.pdf` | Manuscript Fig. 2 |
-| `Figure3_humidity_fusion.png` / `.pdf` | Manuscript Fig. 5 |
-| `FigureS1_feature_importance.png` | Manuscript Fig. 3 |
-| `FigureS2_normalization_ablation.png` | Manuscript Fig. 4 |
+| `Figure2_confusion_matrix.png` / `.pdf` | Manuscript Fig. 3 |
+| `Figure3_humidity_fusion.png` / `.pdf` | Manuscript Fig. 6 |
+| `FigureS1_feature_importance.png` | Manuscript Fig. 4 |
+| `FigureS2_normalization_ablation.png` | Manuscript Fig. 5 |
 | `TableI_normalization.csv` | Manuscript Table 3 |
 | `TableII_per_class_primary.csv` | Manuscript Table 1 |
 | `TableS1_classifiers.csv` | Manuscript Table 2 |
@@ -143,7 +148,7 @@ intervals quoted in this README and in the manuscript come from
 |---|---|
 | `seed_sweep_results.json`, `seed_sweep_per_seed.csv` | Manuscript Table 8, the reported intervals |
 | `loso_results.json` | Leave-one-sensor-out, Section 3.3 |
-| `learning_curve_results.json` | Manuscript Fig. 8 |
+| `learning_curve_results.json` | Manuscript Fig. 9 |
 | `tvoc_checks_results.json` | Supplementary Tables S1–S4 |
 
 The script also prints the exact binomial and permutation tests against chance, the McNemar and paired-t tests on the normalization ablation, the batch and cross-day holdouts, the seven-classifier comparison, and the per-analyte mean humidity that underpins the physical explanation.
