@@ -18,9 +18,10 @@ reported build.
 
 ## Wiring
 
-`SCENT_wiring.fzz` opens in [Fritzing](https://fritzing.org). Parts in the sketch. The Fritzing library names the ADS1115, BME680 and
-CCS811 parts after Adafruit because those are the symbols it ships; the units
-actually built with were generic equivalents, as `BOM.csv` records:
+`SCENT_wiring.fzz` opens in [Fritzing](https://fritzing.org). The Fritzing
+library names the ADS1115, BME680 and CCS811 parts after Adafruit because those
+are the symbols it ships; the units actually built with were generic
+equivalents, as `BOM.csv` records:
 
 | Part | Role |
 |---|---|
@@ -63,7 +64,7 @@ quoted in the manuscript.
 | Chamber (PETG, 750 g at $11/kg) | 8.25 |
 | **Total** | **83.00** |
 
-Read it with these caveats, which belong in the manuscript too:
+Read it with these caveats:
 
 - **Component cost only.** No shipping, tax, soldering iron, printer or
   laptop. The build assumes you already have a 3D printer.
@@ -76,7 +77,7 @@ Read it with these caveats, which belong in the manuscript too:
   classification results are for the specific units built, which is already
   a stated limitation.
 - **Prices move.** The Pi 5 1 GB exists at $45 because memory prices rose;
-  the same pressure moves the other lines. Quote the figure with its date.
+  the same pressure moves the other lines. The total is the cost at the time of purchase.
 - **Filament is the softest line.** 750 g at $0.011/g is the amount of PETG
   attributed to one chamber. If that is a spool purchased rather than the
   mass the slicer reports for this print, the per-device figure is lower and
