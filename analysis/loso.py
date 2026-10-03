@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import StratifiedKFold, cross_val_predict, cross_val_score
 
 DATA = Path("data")      # overridden by --data-dir
@@ -54,11 +54,31 @@ DISPLAY = {"Acetic_Acid": "Acetic acid", "Acetone": "Acetone", "Ammonia": "Ammon
 def load():
     fr = []
     for a, files in PRIMARY.items():
-        for f in files:
+        # files[0] is the 40-trial batch A preparation, files[1] the 10-trial batch B
+        for f, batch in zip(files, ("A", "B")):
             d = pd.read_csv(DATA / f)
             d["Analyte"] = a
+            d["Batch"] = batch
             fr.append(d)
     return pd.concat(fr, ignore_index=True)
+
+
+def holdout_per_seed(df, cols):
+    """Accuracy on the held-out batch B preparation, one value per forest seed.
+
+    Trains on batch A and tests on batch B, which were prepared and acquired on
+    separate days. This is the preparation-level split used elsewhere in the
+    paper; shuffled cross-validation mixes trials from both preparations and so
+    cannot speak to generalization across preparations.
+    """
+    tr, te = df[df.Batch == "A"], df[df.Batch == "B"]
+    acc = []
+    for s in range(N_SEEDS):
+        clf = RandomForestClassifier(N_EST, random_state=s)
+        clf.fit(tr[cols].values, tr["Analyte"].values)
+        acc.append(accuracy_score(te["Analyte"].values,
+                                  clf.predict(te[cols].values)) * 100)
+    return np.array(acc)
 
 
 def per_seed(X, y):
@@ -163,6 +183,32 @@ def main():
             print(f"{k:34s} {d.mean():+10.2f} {d.std(ddof=1):6.2f} "
                   f"{d.min():+7.2f} to {d.max():+5.2f} {int((d <= 0).sum()):>8d}/10")
 
+    print("\nLEAVE-ONE-SENSOR-OUT UNDER THE PREPARATION-LEVEL HOLDOUT")
+    print("Train on batch A, test on the held-out batch B preparation. Shuffled")
+    print("cross-validation mixes both preparations, so it cannot address whether")
+    print("a channel is redundant on a preparation the model has not seen.")
+    hold = {}
+    for label, cols in (("three MOS channels", MQ), ("four features", MQ + [RH])):
+        ref = holdout_per_seed(df, cols)
+        print(f"\n  {label}: reference {ref.mean():.2f} +/- {ref.std(ddof=1):.2f}% "
+              f"({ref.min():.2f}-{ref.max():.2f})")
+        print(f"  {'channels retained':32s} {'acc %':>16s} {'paired cost':>14s} {'seeds <= 0':>11s}")
+        for drop in cols:
+            if drop == RH:
+                continue
+            kept = [c for c in cols if c != drop]
+            red = holdout_per_seed(df, kept)
+            d = ref - red
+            key = f"without {NAME[drop]}, {label}"
+            hold[key] = {"reduced_mean": float(red.mean()), "reduced_sd": float(red.std(ddof=1)),
+                         "mean": float(d.mean()), "sd": float(d.std(ddof=1)),
+                         "min": float(d.min()), "max": float(d.max()),
+                         "n_seeds_reduced_at_least_as_good": int((d <= 0).sum())}
+            print(f"  {'without ' + NAME[drop]:32s} {red.mean():7.2f} +/- {red.std(ddof=1):4.2f} "
+                  f"{d.mean():+9.2f} +/- {d.std(ddof=1):4.2f} {int((d <= 0).sum()):8d}/{N_SEEDS}")
+        hold[f"reference, {label}"] = {"mean": float(ref.mean()), "sd": float(ref.std(ddof=1)),
+                                       "min": float(ref.min()), "max": float(ref.max())}
+
     print("\nPER-CLASS F1 WHEN A CHANNEL IS DROPPED (seed 42, three-channel model)")
     hdr = f"{'analyte':20s} {'all three':>10s}" + "".join(
         f"{'-' + k:>12s}" for k in f1s)
@@ -181,6 +227,7 @@ def main():
                               "min": four_lo, "max": four_hi},
         "drop_one_of_four": four_rows,
         "per_class_f1_full": {DISPLAY[c]: full_f1[c] for c in classes},
+        "preparation_level_holdout": hold,
         "paired_per_seed_differences": paired,
         "per_class_f1_dropped": {k: {DISPLAY[c]: v[c] for c in classes}
                                  for k, v in f1s.items()},

@@ -44,6 +44,14 @@ with the two-channel model the more accurate at one of ten seeds, and −0.13 ±
 points on four, where the reduced model is at least as accurate at every seed.
 Dropping MQ-3 costs 8.58 ± 0.69 points and MQ-135 2.62 ± 0.63.
 
+Repeated under the preparation-level holdout (train on batch A, test on the
+held-out batch B), the direction is the same and somewhat stronger: dropping
+MQ-9 costs −0.89 ± 2.61 points on three channels and −1.22 ± 1.92 on four, with
+the reduced model at least as accurate at **8 of 10** seeds in both cases, while
+dropping MQ-3 costs 10.89 ± 2.39 and 8.22 ± 2.17. The held-out preparation is 90
+trials, so the intervals are wide; this constrains the direction of the MQ-9
+result, not its magnitude.
+
 ---
 
 ## Repository contents
@@ -147,7 +155,7 @@ intervals quoted in this README and in the manuscript come from
 | Output | Corresponds to |
 |---|---|
 | `seed_sweep_results.json`, `seed_sweep_per_seed.csv` | Manuscript Table 8, the reported intervals |
-| `loso_results.json` | Leave-one-sensor-out, Section 3.3 |
+| `loso_results.json` | Leave-one-sensor-out and its preparation-level repeat, Section 3.3, Tables S5/S5b/S5c |
 | `learning_curve_results.json` | Manuscript Fig. 9 |
 | `tvoc_checks_results.json` | Supplementary Tables S1–S4 |
 

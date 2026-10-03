@@ -105,6 +105,74 @@
     "Hydrogen peroxide": 1.0,
     "Propylene glycol": 1.0
   },
+  "preparation_level_holdout": {
+    "without MQ-3, three MOS channels": {
+      "reduced_mean": 76.11111111111111,
+      "reduced_sd": 1.2001371663718294,
+      "mean": 10.888888888888884,
+      "sd": 2.3888171106069764,
+      "min": 6.666666666666671,
+      "max": 14.444444444444443,
+      "n_seeds_reduced_at_least_as_good": 0
+    },
+    "without MQ-9, three MOS channels": {
+      "reduced_mean": 87.88888888888889,
+      "reduced_sd": 1.5225781326736634,
+      "mean": -0.8888888888888872,
+      "sd": 2.6084173128383696,
+      "min": -4.444444444444443,
+      "max": 4.444444444444443,
+      "n_seeds_reduced_at_least_as_good": 8
+    },
+    "without MQ-135, three MOS channels": {
+      "reduced_mean": 84.11111111111111,
+      "reduced_sd": 0.5367176572662702,
+      "mean": 2.8888888888888857,
+      "sd": 2.108185106778914,
+      "min": -1.1111111111111,
+      "max": 5.555555555555543,
+      "n_seeds_reduced_at_least_as_good": 1
+    },
+    "reference, three MOS channels": {
+      "mean": 87.0,
+      "sd": 1.9633123378812662,
+      "min": 83.33333333333334,
+      "max": 88.88888888888889
+    },
+    "without MQ-3, four features": {
+      "reduced_mean": 86.11111111111111,
+      "reduced_sd": 1.0798059064528343,
+      "mean": 8.222222222222218,
+      "sd": 2.1722782664615106,
+      "min": 5.555555555555557,
+      "max": 11.111111111111114,
+      "n_seeds_reduced_at_least_as_good": 0
+    },
+    "without MQ-9, four features": {
+      "reduced_mean": 95.55555555555556,
+      "reduced_sd": 0.9072184232530315,
+      "mean": -1.2222222222222272,
+      "sd": 1.920933700724438,
+      "min": -3.333333333333343,
+      "max": 2.2222222222222143,
+      "n_seeds_reduced_at_least_as_good": 8
+    },
+    "without MQ-135, four features": {
+      "reduced_mean": 92.55555555555557,
+      "reduced_sd": 0.9147473359428454,
+      "mean": 1.7777777777777743,
+      "sd": 2.2345337968886434,
+      "min": 0.0,
+      "max": 6.666666666666657,
+      "n_seeds_reduced_at_least_as_good": 4
+    },
+    "reference, four features": {
+      "mean": 94.33333333333333,
+      "sd": 1.6932043630611069,
+      "min": 93.33333333333333,
+      "max": 97.77777777777777
+    }
+  },
   "paired_per_seed_differences": {
     "without MQ-3, three channels": {
       "mean": 8.577777777777785,

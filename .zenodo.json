@@ -1,0 +1,26 @@
+{
+  "title": "SCENT: an $83 open-hardware three-sensor electronic nose, with the data and analysis code for Nambi et al., Sensors",
+  "description": "<p>Hardware design files, raw sensor logs, acquisition code and analysis code supporting:</p><p>Nambi, T.; Bhimireddy, N.; McElroy, J. P. <em>Isolating the contributions of resistance-ratio normalization and humidity fusion in a minimal three-sensor electronic nose.</em> Manuscript sensors-4609768, <em>Sensors</em>.</p><p>SCENT is a low-cost electronic nose built from three MQ-series metal oxide semiconductor gas sensors in a 3D-printed PETG chamber with active purge fluidics. Acquisition, feature extraction and classification all run on a Raspberry Pi 5 with no network dependency.</p><p>This deposit contains: the raw sensor logs for both acquisitions (450 primary trials and 245 ablation trials, 19 CSV files); the acquisition script; the analysis script for the single-seed results; four further scripts covering the ten-seed sweep, the leave-one-sensor-out ablation and its preparation-level repeat, the learning curve, and the CCS811 exclusion checks, each with its JSON output; the chamber STL and the Fritzing wiring sketch; and the itemized bill of materials behind the USD 83 figure. Nothing is withheld from the deposit.</p><p>Code is released under the MIT License; the data under CC BY 4.0, as recorded in LICENSE and LICENSE-DATA.</p>",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "creators": [
+    { "name": "Nambi, Tharun",
+      "affiliation": "Olentangy Orange High School, Lewis Center, OH, USA; Pelotonia Institute for Immuno-Oncology, The Ohio State University Wexner Medical Center, Columbus, OH, USA",
+      "orcid": "0009-0001-1177-6635" },
+    { "name": "Bhimireddy, Nikhil",
+      "affiliation": "Program in Liberal Medical Education, Brown University, Providence, RI, USA" },
+    { "name": "McElroy, Joseph P.",
+      "affiliation": "Department of Biomedical Informatics, The Ohio State University, Columbus, OH, USA" }
+  ],
+  "keywords": [
+    "electronic nose", "metal oxide semiconductor gas sensor", "MQ-3", "MQ-9", "MQ-135",
+    "volatile organic compounds", "humidity compensation", "sensor fusion",
+    "resistance-ratio normalization", "edge inference", "Raspberry Pi", "open hardware",
+    "reproducible research"
+  ],
+  "related_identifiers": [
+    { "identifier": "https://github.com/Fire-Dev2/SCENT",
+      "relation": "isSupplementTo", "scheme": "url" }
+  ]
+}
