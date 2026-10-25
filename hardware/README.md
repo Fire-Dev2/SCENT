@@ -78,7 +78,7 @@ Read it with these caveats:
   a stated limitation.
 - **Prices move.** The Pi 5 1 GB exists at $45 because memory prices rose;
   the same pressure moves the other lines. The total is the cost at the time of purchase.
-- **Filament is the softest line.** 750 g at $0.011/g is the amount of PETG
+- **Filament is the variable.** 750 g at $0.011/g is the amount of PETG
   attributed to one chamber. If that is a spool purchased rather than the
   mass the slicer reports for this print, the per-device figure is lower and
   the total falls below 83.
