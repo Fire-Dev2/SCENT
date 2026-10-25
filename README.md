@@ -9,7 +9,7 @@ Low-cost embedded electronic nose for volatile organic compound (VOC) headspace 
 Data, acquisition code, and analysis code supporting:
 
 >Nambi, Tharun H., Nikhil Bhimireddy, and Joseph P. McElroy. 2026. 
->"Isolating the Contributions of Resistance-Ratio Normalization and Humidity Fusion in a Minimal Three-Sensor Electronic Nose" Sensors 26, no. 20: 6645. >https://doi.org/10.3390/s26206645
+>"Isolating the Contributions of Resistance-Ratio Normalization and Humidity Fusion in a Minimal Three-Sensor Electronic Nose" Sensors 26, no. 20: 6645. https://doi.org/10.3390/s26206645
 
 ---
 
