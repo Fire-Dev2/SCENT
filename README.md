@@ -2,6 +2,10 @@
 
 Low-cost embedded electronic nose for volatile organic compound (VOC) headspace classification.
 
+<p align="center">
+  <img src="hardware/scent-device.jpg" alt="SCENT device: assembled electronic nose, enclosure design iterations, and test setup" width="800">
+</p>
+
 Data, acquisition code, and analysis code supporting:
 
 > Nambi, T., Bhimireddy, N. & McElroy, J. P. *Isolating the contributions of
